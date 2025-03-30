@@ -49,19 +49,10 @@ public class BigramFrequencyPairs extends Configured implements Tool {
 				throws IOException, InterruptedException {
 			String line = ((Text) value).toString();
 			String[] words = line.trim().split("\\s+");
-
-			if (words.length > 1) {
-				String previous_word = words[0];
-				for (int i = 1; i < words.length; i++) {
-					String w = words[i];
-					if (w.length() == 0) {
-						continue;
-					}
-					BIGRAM.set(previous_word, w);
-					context.write(BIGRAM, ONE);
-					previous_word = w;
-				}
-			}
+			
+			/*
+			 * TODO: Your implementation goes here.
+			 */
 		}
 	}
 
@@ -77,25 +68,9 @@ public class BigramFrequencyPairs extends Configured implements Tool {
 		@Override
 		public void reduce(PairOfStrings key, Iterable<IntWritable> values,
 				Context context) throws IOException, InterruptedException {
-					String leftWord = key.getLeftElement();
-
-					// 计算所有以 leftWord 为左侧单词的 bigram 的总次数（即分母）
-					int totalLeftCount = 0;
-					for (IntWritable value : values) {
-						totalLeftCount += value.get();
-					}
-			
-					// 输出 leftWord 的总出现次数
-					VALUE.set(totalLeftCount);
-					context.write(new PairOfStrings(leftWord, ""), VALUE);
-			
-					// 计算每个 bigram 的相对频率
-					for (IntWritable value : values) {
-						int count = value.get();
-						float relativeFrequency = (float) count / totalLeftCount;
-						VALUE.set(relativeFrequency);
-						context.write(key, VALUE);  // 输出 bigram 和相对频率
-					}
+			/*
+			 * TODO: Your implementation goes here.
+			 */
 		}
 	}
 	
@@ -106,12 +81,9 @@ public class BigramFrequencyPairs extends Configured implements Tool {
 		@Override
 		public void reduce(PairOfStrings key, Iterable<IntWritable> values,
 				Context context) throws IOException, InterruptedException {
-					int sum = 0;
-					for (IntWritable value : values) {
-						sum += value.get();
-					}
-					SUM.set(sum);
-					context.write(key, SUM);
+			/*
+			 * TODO: Your implementation goes here.
+			 */
 		}
 	}
 

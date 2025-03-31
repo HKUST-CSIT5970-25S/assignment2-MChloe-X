@@ -53,6 +53,21 @@ public class CORPairs extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			// Öğ¸öµ¥´Ê¼ÆÊı£¨Í¬Ò»ĞĞ³öÏÖ¶à´Î¶¼Òª¼Æ£©
+			while (doc_tokenizer.hasMoreTokens()) {
+				String word = doc_tokenizer.nextToken().toLowerCase();
+				if (word.length() == 0) continue;
+				Integer oldCount = word_set.get(word);
+				if (oldCount == null) {
+					word_set.put(word, 1);
+				} else {
+					word_set.put(word, oldCount + 1);
+				}
+			}
+			// Êä³öµ½ÏÂÓÎ£¬(word, countInThisLine)
+			for (Map.Entry<String, Integer> entry : word_set.entrySet()) {
+				context.write(new Text(entry.getKey()), new IntWritable(entry.getValue()));
+			}
 		}
 	}
 
@@ -66,6 +81,11 @@ public class CORPairs extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			int sum = 0;
+			for (IntWritable val : values) {
+				sum += val.get();
+			}
+			context.write(key, new IntWritable(sum));
 		}
 	}
 
@@ -81,6 +101,24 @@ public class CORPairs extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			// ½«¸ÃĞĞ³öÏÖµÄËùÓĞµ¥´ÊÈ¥ÖØÊÕ¼¯
+			Set<String> uniqueWords = new TreeSet<String>();
+
+			while (doc_tokenizer.hasMoreTokens()) {
+				String w = doc_tokenizer.nextToken().toLowerCase();
+				if (w.length() > 0) {
+					uniqueWords.add(w);
+				}
+			}
+			// Éú³ÉËùÓĞ²»ÖØ¸´µÄ¶Ô (A,B)£¬²¢±£Ö¤A < B (»òÏàµÈÊ±Ò²¿É×ÔĞĞ´¦Àí£¬Ò»°ã²»ĞèÊä³ö(A,A))
+			List<String> wordList = new ArrayList<String>(uniqueWords);
+			for (int i = 0; i < wordList.size(); i++) {
+				for (int j = i + 1; j < wordList.size(); j++) {
+					String left = wordList.get(i);
+					String right = wordList.get(j);
+					context.write(new PairOfStrings(left, right), new IntWritable(1));
+				}
+			}
 		}
 	}
 
@@ -93,6 +131,11 @@ public class CORPairs extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			int sum = 0;
+			for (IntWritable val : values) {
+				sum += val.get();
+			}
+			context.write(key, new IntWritable(sum));
 		}
 	}
 
@@ -131,7 +174,7 @@ public class CORPairs extends Configured implements Tool {
 					line = reader.readLine();
 				}
 				reader.close();
-				LOG.info("finishedï¼");
+				LOG.info("finished£¡");
 			} catch (Exception e) {
 				System.out.println(e.getMessage());
 			}
@@ -145,6 +188,26 @@ public class CORPairs extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			// ÀÛ¼ÓµÃµ½ Freq(A,B)
+			int freqAB = 0;
+			for (IntWritable val : values) {
+				freqAB += val.get();
+			}
+
+			// »ñÈ¡ Freq(A) ºÍ Freq(B)
+			String A = key.getLeftElement();
+			String B = key.getRightElement();
+			if (!word_total_map.containsKey(A) || !word_total_map.containsKey(B)) {
+				return; // ÀíÂÛÉÏ²»»á·¢Éú
+			}
+			int freqA = word_total_map.get(A);
+			int freqB = word_total_map.get(B);
+
+			// ¼ÆËãÏà¹ØÏµÊı COR(A,B) = freq(A,B) / (freq(A) * freq(B))
+			double cor = (double) freqAB / (freqA * freqB);
+
+			// Êä³ö½á¹û
+			context.write(key, new DoubleWritable(cor));
 		}
 	}
 

@@ -2,6 +2,7 @@ package hk.ust.csit5970;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Iterator;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -47,12 +48,28 @@ public class BigramFrequencyPairs extends Configured implements Tool {
 		@Override
 		public void map(LongWritable key, Text value, Context context)
 				throws IOException, InterruptedException {
+			// String line = ((Text) value).toString().toLowerCase().replaceAll("[^a-z ]", "");;
 			String line = ((Text) value).toString();
 			String[] words = line.trim().split("\\s+");
 			
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			if (words.length > 1){
+				String previous_word = words[0];
+				for (int i = 1; i < words.length; i++) {
+					String w = words[i];
+					// Skip empty words
+					if (w.length() == 0) {
+						continue;
+					}
+					BIGRAM.set(previous_word,"");
+					context.write(BIGRAM, ONE);
+					BIGRAM.set(previous_word, w);
+					context.write(BIGRAM, ONE);
+					previous_word = w;
+				}
+			}
 		}
 	}
 
@@ -64,6 +81,9 @@ public class BigramFrequencyPairs extends Configured implements Tool {
 
 		// Reuse objects.
 		private final static FloatWritable VALUE = new FloatWritable();
+		// 用于记录当前处理的左词（w???）和其边缘计数
+		private String currentLeft = null;
+		private float marginal = 0;
 
 		@Override
 		public void reduce(PairOfStrings key, Iterable<IntWritable> values,
@@ -71,6 +91,34 @@ public class BigramFrequencyPairs extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			String left = key.getLeftElement();   // w???
+			String right = key.getRightElement(); // w?
+
+			// 累加所有 value，获得当前 bigram 的总出现次数
+			int sum = 0;
+			for (IntWritable val : values) {
+				sum += val.get();
+			}
+
+			// 每当进入一个新的左词 w???，就重置边缘计数
+			if (currentLeft == null || !currentLeft.equals(left)) {
+				currentLeft = left;
+				marginal = 0; // 等待遇到 (left, "") 时设定
+			}
+
+			if (right.equals("")) {
+				// 是边缘项 (w???, "")，表示该左词作为 bigram 的前项出现的总次数
+				marginal = sum;
+				VALUE.set(marginal); // 输出边缘计数本身，方便验证
+				context.write(new PairOfStrings(left, ""), VALUE);
+			} else {
+				// 正常 bigram (w???, w?)，计算条件概率
+				if (marginal > 0) {
+					float relativeFreq = (float) sum / marginal;
+					VALUE.set(relativeFreq);
+					context.write(key, VALUE);
+				}
+			}
 		}
 	}
 	
@@ -84,6 +132,13 @@ public class BigramFrequencyPairs extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			Iterator<IntWritable> iter = values.iterator();
+			int sum = 0;
+			while (iter.hasNext()) {
+				sum += iter.next().get();
+			}
+			SUM.set(sum);
+			context.write(key, SUM);
 		}
 	}
 
